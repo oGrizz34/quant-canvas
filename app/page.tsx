@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import ReactFlow, {
   Node,
+  Edge,
   addEdge,
   Background,
   Controls,
@@ -19,6 +21,7 @@ import 'reactflow/dist/style.css';
 import { Toaster, toast } from 'sonner';
 
 import { PriceNode, RSINode, ActionNode } from '@/components/nodes';
+import { SaveDialog } from '@/components/SaveDialog';
 import { supabase } from '@/lib/supabase';
 
 const nodeTypes: NodeTypes = {
@@ -69,10 +72,34 @@ function Sidebar() {
 
 function Flow() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+  const [isSaveOpen, setSaveOpen] = useState(false);
+  const [loadedStrategyName, setLoadedStrategyName] = useState<string>('');
+  const strategyId = searchParams.get('id');
+
+  useEffect(() => {
+    if (!strategyId) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from('strategies')
+        .select('content, name')
+        .eq('id', strategyId)
+        .single();
+      if (error || !data) {
+        toast.error('Failed to load strategy');
+        return;
+      }
+      const content = data.content as { nodes: Node[]; edges: Edge[] } | null;
+      if (content?.nodes) setNodes(content.nodes);
+      if (content?.edges) setEdges(content.edges);
+      setLoadedStrategyName((data.name as string) ?? '');
+      toast.success('Strategy Loaded');
+    })();
+  }, [strategyId, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -110,47 +137,56 @@ function Flow() {
     [reactFlowInstance, setNodes]
   );
 
-  const onSaveStrategy = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.replace('/login');
-      return;
-    }
+  const saveStrategyWithName = useCallback(
+    async (name: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace('/login');
+        return;
+      }
 
-    const strategy = {
-      nodes: nodes.map((n) => ({
-        id: n.id,
-        type: n.type,
-        position: n.position,
-        data: n.data,
-      })),
-      edges: edges.map((e) => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        sourceHandle: e.sourceHandle ?? null,
-        targetHandle: e.targetHandle ?? null,
-      })),
-    };
+      const strategy = {
+        nodes: nodes.map((n) => ({
+          id: n.id,
+          type: n.type,
+          position: n.position,
+          data: n.data,
+        })),
+        edges: edges.map((e) => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          sourceHandle: e.sourceHandle ?? null,
+          targetHandle: e.targetHandle ?? null,
+        })),
+      };
 
-    try {
-      const { error } = await supabase
-        .from('strategies')
-        .insert({
-          name: 'My First Strategy',
+      try {
+        const { error } = await supabase.from('strategies').insert({
+          name,
           content: strategy,
           user_id: user.id,
         });
 
-      if (error) {
+        if (error) {
+          toast.error('Failed to save');
+        } else {
+          toast.success('Strategy saved to cloud');
+          setSaveOpen(false);
+        }
+      } catch (err) {
         toast.error('Failed to save');
-      } else {
-        toast.success('Strategy saved to cloud');
       }
-    } catch (err) {
-      toast.error('Failed to save');
-    }
-  }, [nodes, edges, router]);
+    },
+    [nodes, edges, router]
+  );
+
+  const handleSaveFromDialog = useCallback(
+    async (name: string) => {
+      await saveStrategyWithName(name);
+    },
+    [saveStrategyWithName]
+  );
 
   return (
     <div className="relative h-screen w-full bg-[#111]">
@@ -188,13 +224,27 @@ function Flow() {
         </div>
       </ReactFlowProvider>
       <Sidebar />
-      <button
-        type="button"
-        onClick={onSaveStrategy}
-        className="absolute right-4 top-4 z-10 rounded-lg border border-[#39ff14] bg-[#1a1a1a] px-4 py-2 font-mono text-sm font-semibold text-[#39ff14] shadow-lg shadow-[#39ff14]/10 transition-colors hover:bg-[#39ff14]/10 hover:shadow-[#39ff14]/20"
-      >
-        Save Strategy
-      </button>
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+        <Link
+          href="/dashboard"
+          className="rounded-lg border border-[#333] bg-[#1a1a1a] px-4 py-2 font-mono text-sm font-semibold text-white transition-colors hover:border-[#39ff14]/50 hover:text-[#39ff14]"
+        >
+          Dashboard
+        </Link>
+        <button
+          type="button"
+          onClick={() => setSaveOpen(true)}
+          className="rounded-lg border border-[#39ff14] bg-[#1a1a1a] px-4 py-2 font-mono text-sm font-semibold text-[#39ff14] shadow-lg shadow-[#39ff14]/10 transition-colors hover:bg-[#39ff14]/10 hover:shadow-[#39ff14]/20"
+        >
+          Save Strategy
+        </button>
+      </div>
+      <SaveDialog
+        open={isSaveOpen}
+        onClose={() => setSaveOpen(false)}
+        onSave={handleSaveFromDialog}
+        defaultName={loadedStrategyName}
+      />
     </div>
   );
 }
