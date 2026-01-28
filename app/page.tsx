@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ReactFlow, {
   Node,
   addEdge,
@@ -67,6 +68,7 @@ function Sidebar() {
 }
 
 function Flow() {
+  const router = useRouter();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -109,6 +111,12 @@ function Flow() {
   );
 
   const onSaveStrategy = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+
     const strategy = {
       nodes: nodes.map((n) => ({
         id: n.id,
@@ -131,6 +139,7 @@ function Flow() {
         .insert({
           name: 'My First Strategy',
           content: strategy,
+          user_id: user.id,
         });
 
       if (error) {
@@ -141,7 +150,7 @@ function Flow() {
     } catch (err) {
       toast.error('Failed to save');
     }
-  }, [nodes, edges]);
+  }, [nodes, edges, router]);
 
   return (
     <div className="relative h-screen w-full bg-[#111]">
@@ -190,6 +199,29 @@ function Flow() {
   );
 }
 
-export default function Home() {
+function Home() {
+  const router = useRouter();
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        router.replace('/login');
+        return;
+      }
+      setChecked(true);
+    });
+  }, [router]);
+
+  if (!checked) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-[#111]">
+        <div className="font-mono text-[#39ff14]">Loading…</div>
+      </div>
+    );
+  }
+
   return <Flow />;
 }
+
+export default Home;
