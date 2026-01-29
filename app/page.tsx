@@ -21,6 +21,7 @@ import 'reactflow/dist/style.css';
 import { Toaster, toast } from 'sonner';
 
 import { PriceNode, RSINode, ActionNode } from '@/components/nodes';
+import SMANode from '@/components/nodes/SMANode';
 import { SaveDialog } from '@/components/SaveDialog';
 import { supabase } from '@/lib/supabase';
 
@@ -28,6 +29,7 @@ const nodeTypes: NodeTypes = {
   priceNode: PriceNode,
   rsiNode: RSINode,
   actionNode: ActionNode,
+  smaNode: SMANode,
 };
 
 type DragPayload =
@@ -40,6 +42,7 @@ const SIDEBAR_ITEMS: { id: string; label: string; sub: string; payload: DragPayl
   { id: 'rsi', label: 'RSI', sub: 'Indicator', payload: { type: 'rsiNode', data: { period: 14 } } },
   { id: 'buy', label: 'Buy Action', sub: 'Action', payload: { type: 'actionNode', data: { actionType: 'Buy' } } },
   { id: 'sell', label: 'Sell Action', sub: 'Action', payload: { type: 'actionNode', data: { actionType: 'Sell' } } },
+  { id: 'sma', label: 'Trend Filter (SMA)', sub: 'Filter', payload: { type: 'smaNode', data: { period: 200 } } },
 ];
 
 function Sidebar() {
