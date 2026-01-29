@@ -5,15 +5,19 @@ import React, { useEffect, useState } from 'react';
 type SaveDialogProps = {
   open: boolean;
   onClose: () => void;
-  onSave: (name: string) => void | Promise<void>;
+  onSave: (name: string, isPublic: boolean) => void | Promise<void>;
   defaultName: string;
 };
 
 export function SaveDialog({ open, onClose, onSave, defaultName }: SaveDialogProps) {
   const [name, setName] = useState(defaultName);
+  const [isPublic, setIsPublic] = useState(false);
 
   useEffect(() => {
-    if (open) setName(defaultName);
+    if (open) {
+      setName(defaultName);
+      setIsPublic(false);
+    }
   }, [open, defaultName]);
 
   if (!open) return null;
@@ -21,7 +25,7 @@ export function SaveDialog({ open, onClose, onSave, defaultName }: SaveDialogPro
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = name.trim();
-    if (trimmed) void Promise.resolve(onSave(trimmed));
+    if (trimmed) void Promise.resolve(onSave(trimmed, isPublic));
   };
 
   return (
@@ -50,6 +54,15 @@ export function SaveDialog({ open, onClose, onSave, defaultName }: SaveDialogPro
               autoFocus
               className="w-full rounded-lg border border-[#333] bg-[#222] px-3 py-2 font-mono text-sm text-white placeholder-[#666] focus:border-[#39ff14] focus:outline-none focus:ring-1 focus:ring-[#39ff14]"
             />
+          </label>
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={isPublic}
+              onChange={(e) => setIsPublic(e.target.checked)}
+              className="h-4 w-4 rounded border-[#333] bg-[#222] accent-[#39ff14] focus:ring-[#39ff14]"
+            />
+            <span className="font-mono text-sm text-[#888]">Publish to Community Marketplace?</span>
           </label>
           <div className="flex justify-end gap-2">
             <button

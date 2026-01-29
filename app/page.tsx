@@ -80,6 +80,7 @@ function Flow() {
   const [isSaveOpen, setSaveOpen] = useState(false);
   const [loadedStrategyName, setLoadedStrategyName] = useState<string>('');
   const strategyId = searchParams.get('id');
+  const cloneId = searchParams.get('clone');
 
   useEffect(() => {
     if (!strategyId) return;
@@ -100,6 +101,29 @@ function Flow() {
       toast.success('Strategy Loaded');
     })();
   }, [strategyId, setNodes, setEdges]);
+
+  useEffect(() => {
+    if (!cloneId) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from('strategies')
+        .select('content, name')
+        .eq('id', cloneId)
+        .eq('is_public', true)
+        .single();
+      if (error || !data) {
+        toast.error('Failed to clone strategy');
+        router.replace('/');
+        return;
+      }
+      const content = data.content as { nodes: Node[]; edges: Edge[] } | null;
+      if (content?.nodes) setNodes(content.nodes);
+      if (content?.edges) setEdges(content.edges);
+      setLoadedStrategyName((data.name as string) ?? '');
+      toast.success('Strategy cloned');
+      router.replace('/');
+    })();
+  }, [cloneId, router, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -138,12 +162,17 @@ function Flow() {
   );
 
   const saveStrategyWithName = useCallback(
-    async (name: string) => {
+    async (name: string, isPublic: boolean) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.replace('/login');
         return;
       }
+
+      const authorName =
+        (user.user_metadata?.username as string) ??
+        user.email ??
+        'Anonymous';
 
       const strategy = {
         nodes: nodes.map((n) => ({
@@ -166,6 +195,8 @@ function Flow() {
           name,
           content: strategy,
           user_id: user.id,
+          author_name: authorName,
+          is_public: isPublic,
         });
 
         if (error) {
@@ -182,8 +213,8 @@ function Flow() {
   );
 
   const handleSaveFromDialog = useCallback(
-    async (name: string) => {
-      await saveStrategyWithName(name);
+    async (name: string, isPublic: boolean) => {
+      await saveStrategyWithName(name, isPublic);
     },
     [saveStrategyWithName]
   );
