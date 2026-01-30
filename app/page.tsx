@@ -41,6 +41,7 @@ export type DragPayload = {
 // --- MAIN COMPONENT ---
 export default function Flow() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const hasLoaded = useRef(false);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
@@ -52,6 +53,10 @@ export default function Flow() {
 
   // Load Strategy if ID is in URL
   useEffect(() => {
+    // Prevent double-firing in React Strict Mode
+    if (hasLoaded.current) return;
+    hasLoaded.current = true;
+
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id');
     const isNew = params.get('new');
@@ -65,7 +70,7 @@ export default function Flow() {
       setEdges([]);
       setStrategyName("New Strategy");
     }
-  }, [setNodes, setEdges]);
+  }, []); // Removed dependencies to keep it strictly "Run Once on Mount"
 
   // Load Function
   const loadStrategy = async (id: string) => {
