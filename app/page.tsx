@@ -1,162 +1,126 @@
-'use client';
-
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+"use client";
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import ReactFlow, {
-  Node,
-  Edge,
+  ReactFlowProvider,
   addEdge,
-  Background,
-  Controls,
-  MiniMap,
   useNodesState,
   useEdgesState,
+  Controls,
+  Background,
   Connection,
-  ReactFlowProvider,
-  NodeTypes,
+  Edge,
+  ReactFlowInstance,
+  MiniMap
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-
 import { Toaster, toast } from 'sonner';
+import { ArrowLeft, Save, Play, Layers } from 'lucide-react';
+import Link from 'next/link';
 
-import { PriceNode, RSINode, ActionNode } from '@/components/nodes';
+// Imports
+import { PriceNode, RSINode, ActionNode } from '@/components/nodes'; 
 import SMANode from '@/components/nodes/SMANode';
 import { SaveDialog } from '@/components/SaveDialog';
 import { supabase } from '@/lib/supabase';
+import Sidebar from '@/components/Sidebar';
 
-const nodeTypes: NodeTypes = {
+// Node Types
+const nodeTypes = {
   priceNode: PriceNode,
   rsiNode: RSINode,
   actionNode: ActionNode,
   smaNode: SMANode,
 };
 
-type DragPayload =
-  | { type: 'priceNode'; data: { ticker: string } }
-  | { type: 'rsiNode'; data: { period: number } }
-  | { type: 'actionNode'; data: { actionType: 'Buy' | 'Sell' } };
+// --- TYPES ---
+export type DragPayload = {
+  type: string;
+  data: any;
+};
 
-const SIDEBAR_ITEMS: { id: string; label: string; sub: string; payload: DragPayload }[] = [
-  { id: 'price', label: 'Price', sub: 'Data', payload: { type: 'priceNode', data: { ticker: 'SPY' } } },
-  { id: 'rsi', label: 'RSI', sub: 'Indicator', payload: { type: 'rsiNode', data: { period: 14 } } },
-  { id: 'buy', label: 'Buy Action', sub: 'Action', payload: { type: 'actionNode', data: { actionType: 'Buy' } } },
-  { id: 'sell', label: 'Sell Action', sub: 'Action', payload: { type: 'actionNode', data: { actionType: 'Sell' } } },
-  { id: 'sma', label: 'Trend Filter (SMA)', sub: 'Filter', payload: { type: 'smaNode', data: { period: 200 } } },
-];
-
-function Sidebar() {
-  const onDragStart = (e: React.DragEvent, payload: DragPayload) => {
-    e.dataTransfer.setData('application/reactflow', JSON.stringify(payload));
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  return (
-    <div className="absolute left-4 top-4 z-10 min-w-[180px] rounded-lg border border-[#333] bg-[#1a1a1a] p-4 shadow-xl">
-      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider text-[#39ff14]">
-        Components
-      </div>
-      <div className="space-y-2">
-        {SIDEBAR_ITEMS.map((item) => (
-          <div
-            key={item.id}
-            draggable
-            onDragStart={(e) => onDragStart(e, item.payload)}
-            className="cursor-grab rounded border border-[#333] bg-[#222] px-3 py-2 transition-colors hover:border-[#39ff14]/50 hover:bg-[#2a2a2a] active:cursor-grabbing"
-          >
-            <div className="text-sm font-medium text-white">{item.label}</div>
-            <div className="font-mono text-xs text-[#666]">{item.sub}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Flow() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+// --- MAIN COMPONENT ---
+export default function Flow() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
-  const [isSaveOpen, setSaveOpen] = useState(false);
-  const [loadedStrategyName, setLoadedStrategyName] = useState<string>('');
-  const strategyId = searchParams.get('id');
-  const cloneId = searchParams.get('clone');
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+  
+  // Strategy State
+  const [isSaveOpen, setIsSaveOpen] = useState(false);
+  const [strategyId, setStrategyId] = useState<string | null>(null);
+  const [strategyName, setStrategyName] = useState<string>("Untitled Strategy");
 
+  // Load Strategy if ID is in URL
   useEffect(() => {
-    if (!strategyId) return;
-    (async () => {
-      const { data, error } = await supabase
-        .from('strategies')
-        .select('content, name')
-        .eq('id', strategyId)
-        .single();
-      if (error || !data) {
-        toast.error('Failed to load strategy');
-        return;
-      }
-      const content = data.content as { nodes: Node[]; edges: Edge[] } | null;
-      if (content?.nodes) setNodes(content.nodes);
-      if (content?.edges) setEdges(content.edges);
-      setLoadedStrategyName((data.name as string) ?? '');
-      toast.success('Strategy Loaded');
-    })();
-  }, [strategyId, setNodes, setEdges]);
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    const isNew = params.get('new');
 
-  useEffect(() => {
-    if (!cloneId) return;
-    (async () => {
-      const { data, error } = await supabase
-        .from('strategies')
-        .select('content, name')
-        .eq('id', cloneId)
-        .eq('is_public', true)
-        .single();
-      if (error || !data) {
-        toast.error('Failed to clone strategy');
-        router.replace('/');
-        return;
-      }
-      const content = data.content as { nodes: Node[]; edges: Edge[] } | null;
-      if (content?.nodes) setNodes(content.nodes);
-      if (content?.edges) setEdges(content.edges);
-      setLoadedStrategyName((data.name as string) ?? '');
-      toast.success('Strategy cloned');
-      router.replace('/');
-    })();
-  }, [cloneId, router, setNodes, setEdges]);
+    if (id) {
+      setStrategyId(id);
+      loadStrategy(id);
+    } else if (isNew) {
+      setStrategyId(null);
+      setNodes([]);
+      setEdges([]);
+      setStrategyName("New Strategy");
+    }
+  }, [setNodes, setEdges]);
 
-  const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
-  );
+  // Load Function
+  const loadStrategy = async (id: string) => {
+    const { data, error } = await supabase.from('strategies').select('*').eq('id', id).single();
+    if (error) {
+      toast.error('Failed to load strategy');
+      return;
+    }
+    if (data && data.content) {
+      setStrategyName(data.name);
+      setNodes(data.content.nodes || []);
+      setEdges(data.content.edges || []);
+      toast.success(`Loaded "${data.name}"`);
+    }
+  };
 
-  const onDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+  // Connect & Drag Logic
+  const onConnect = useCallback((params: Connection | Edge) => {
+    setEdges((eds) => addEdge({ 
+      ...params, 
+      animated: true, 
+      style: { stroke: '#22c55e', strokeWidth: 2 } // Green wires
+    }, eds));
+  }, [setEdges]);
+
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
   }, []);
 
   const onDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
+    (event: React.DragEvent) => {
+      event.preventDefault();
       if (!reactFlowWrapper.current || !reactFlowInstance) return;
 
-      const raw = e.dataTransfer.getData('application/reactflow');
+      const raw = event.dataTransfer.getData('application/reactflow');
       if (!raw) return;
 
-      const payload = JSON.parse(raw) as DragPayload;
+      const payload: DragPayload = JSON.parse(raw);
       const position = reactFlowInstance.screenToFlowPosition({
-        x: e.clientX,
-        y: e.clientY,
+        x: event.clientX,
+        y: event.clientY,
       });
-
-      const newNode: Node = {
-        id: `${payload.type}-${Date.now()}`,
+      
+      const newNode = {
+        id: `node-${Date.now()}`,
         type: payload.type,
         position,
-        data: payload.data,
+        data: { 
+          ...payload.data,
+          // Generic onChange handler for all inputs
+          onChange: (newData: any) => {
+            setNodes((nds) => nds.map((n) => (n.id === `node-${Date.now()}` ? { ...n, data: newData } : n)));
+          } 
+        },
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -164,148 +128,91 @@ function Flow() {
     [reactFlowInstance, setNodes]
   );
 
-  const saveStrategyWithName = useCallback(
-    async (name: string, isPublic: boolean) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.replace('/login');
-        return;
-      }
-
-      const authorName =
-        (user.user_metadata?.username as string) ??
-        user.email ??
-        'Anonymous';
-
-      const strategy = {
-        nodes: nodes.map((n) => ({
-          id: n.id,
-          type: n.type,
-          position: n.position,
-          data: n.data,
-        })),
-        edges: edges.map((e) => ({
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          sourceHandle: e.sourceHandle ?? null,
-          targetHandle: e.targetHandle ?? null,
-        })),
-      };
-
-      try {
-        const { error } = await supabase.from('strategies').insert({
-          name,
-          content: strategy,
-          user_id: user.id,
-          author_name: authorName,
-          is_public: isPublic,
-        });
-
-        if (error) {
-          toast.error('Failed to save');
-        } else {
-          toast.success('Strategy saved to cloud');
-          setSaveOpen(false);
-        }
-      } catch (err) {
-        toast.error('Failed to save');
-      }
-    },
-    [nodes, edges, router]
-  );
-
-  const handleSaveFromDialog = useCallback(
-    async (name: string, isPublic: boolean) => {
-      await saveStrategyWithName(name, isPublic);
-    },
-    [saveStrategyWithName]
-  );
-
   return (
-    <div className="relative h-screen w-full bg-[#111]">
-      <Toaster position="top-center" theme="dark" toastOptions={{ classNames: { success: '!border-[#39ff14]', error: '!border-red-500' } }} />
-      <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          backgroundImage: 'radial-gradient(circle, #39ff14 1px, transparent 1px)',
-          backgroundSize: '20px 20px',
-        }}
-      />
-      <ReactFlowProvider>
-        <div ref={reactFlowWrapper} className="h-full w-full">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onInit={setReactFlowInstance}
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-            nodeTypes={nodeTypes}
-            fitView
-            className="bg-transparent"
-          >
-            <Background color="#333" gap={20} size={1} />
-            <Controls className="rounded-lg border border-[#333] bg-[#1a1a1a] [&>button]:border-[#333] [&>button]:bg-[#222] [&>button]:text-white hover:[&>button]:border-[#39ff14]/50 hover:[&>button]:bg-[#2a2a2a]" />
-            <MiniMap
-              className="rounded-lg border border-[#333] bg-[#1a1a1a]"
-              nodeColor="#39ff14"
-              maskColor="rgba(0, 0, 0, 0.6)"
-            />
-          </ReactFlow>
+    <div className="h-screen w-screen bg-neutral-950 text-white overflow-hidden flex flex-col">
+      <Toaster position="top-right" theme="dark" />
+      
+      {/* 1. THE HUD HEADER */}
+      <header className="h-16 border-b border-white/5 bg-neutral-950/80 backdrop-blur-md flex items-center justify-between px-6 z-30 relative shadow-2xl">
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard" className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2">
+            <ArrowLeft className="w-4 h-4" /> 
+            <span className="text-sm font-medium">Exit</span>
+          </Link>
+          <div className="h-6 w-px bg-white/10" />
+          <div className="flex flex-col">
+            <span className="text-[10px] text-green-500 font-mono uppercase tracking-wider">Active Workspace</span>
+            <span className="font-bold text-sm text-white">{strategyName}</span>
+          </div>
         </div>
-      </ReactFlowProvider>
-      <Sidebar />
-      <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
-        <Link
-          href="/dashboard"
-          className="rounded-lg border border-[#333] bg-[#1a1a1a] px-4 py-2 font-mono text-sm font-semibold text-white transition-colors hover:border-[#39ff14]/50 hover:text-[#39ff14]"
-        >
-          Dashboard
-        </Link>
-        <button
-          type="button"
-          onClick={() => setSaveOpen(true)}
-          className="rounded-lg border border-[#39ff14] bg-[#1a1a1a] px-4 py-2 font-mono text-sm font-semibold text-[#39ff14] shadow-lg shadow-[#39ff14]/10 transition-colors hover:bg-[#39ff14]/10 hover:shadow-[#39ff14]/20"
-        >
-          Save Strategy
-        </button>
+
+        <div className="flex items-center gap-3">
+           <button 
+            onClick={() => setIsSaveOpen(true)}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-black px-4 py-2 rounded text-sm font-bold transition-all shadow-[0_0_15px_rgba(34,197,94,0.3)]"
+          >
+            <Save className="w-4 h-4" />
+            Save Strategy
+          </button>
+        </div>
+      </header>
+
+      {/* 2. THE MAIN WORKSPACE */}
+      <div className="flex-1 relative">
+        <ReactFlowProvider>
+          <div ref={reactFlowWrapper} className="h-full w-full">
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onInit={setReactFlowInstance}
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+              nodeTypes={nodeTypes}
+              fitView
+              className="bg-neutral-950"
+            >
+              {/* Technical Background */}
+              <Background 
+                color="#222" 
+                gap={25} 
+                size={1} 
+                className="opacity-50"
+              />
+              
+              {/* Styled Controls */}
+              <Controls className="bg-neutral-900 border border-white/10 fill-white text-white [&>button]:border-white/10 [&>button:hover]:bg-neutral-800" />
+              
+              {/* MiniMap for large strategies */}
+              <MiniMap 
+                style={{ height: 120, width: 160 }} 
+                zoomable 
+                pannable 
+                nodeColor={() => '#22c55e'}
+                maskColor="rgba(0,0,0, 0.7)"
+                className="!bg-neutral-900 !border !border-white/10 !rounded-lg"
+              />
+            </ReactFlow>
+          </div>
+          
+          {/* Floating Sidebar (Palette) */}
+          <Sidebar />
+
+        </ReactFlowProvider>
       </div>
-      <SaveDialog
-        open={isSaveOpen}
-        onClose={() => setSaveOpen(false)}
-        onSave={handleSaveFromDialog}
-        defaultName={loadedStrategyName}
+
+      {/* Save Dialog Popup */}
+      <SaveDialog 
+        open={isSaveOpen} 
+        onOpenChange={setIsSaveOpen}
+        nodes={nodes}
+        edges={edges}
+        strategyId={strategyId}
+        currentName={strategyName}
+        onSave={(name) => setStrategyName(name)}
       />
     </div>
   );
 }
-
-function Home() {
-  const router = useRouter();
-  const [checked, setChecked] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        router.replace('/login');
-        return;
-      }
-      setChecked(true);
-    });
-  }, [router]);
-
-  if (!checked) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-[#111]">
-        <div className="font-mono text-[#39ff14]">Loading…</div>
-      </div>
-    );
-  }
-
-  return <Flow />;
-}
-
-export default Home;
