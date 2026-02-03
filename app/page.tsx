@@ -16,6 +16,7 @@ import 'reactflow/dist/style.css';
 import { Toaster, toast } from 'sonner';
 import { ArrowLeft, Save, Play, Layers } from 'lucide-react';
 import Link from 'next/link';
+import { Analytics } from "@vercel/analytics/next"
 
 // Imports
 import { PriceNode, RSINode, ActionNode } from '@/components/nodes'; 
