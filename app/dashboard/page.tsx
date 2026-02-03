@@ -231,11 +231,11 @@ export default function DashboardPage() {
                     <div className="text-xs text-neutral-500 font-mono">
                       {strategy.trade_count || 0} Trades Executed
                     </div>
-                    <Link href={`/?id=${strategy.id}`}>
-                      <span className="text-xs font-bold text-white hover:text-green-400 flex items-center gap-1 cursor-pointer">
-                        OPEN TERMINAL →
-                      </span>
-                    </Link>
+                    <Link href={`/strategy/${strategy.id}`}>
+   <span className="text-xs font-bold text-white hover:text-green-400 flex items-center gap-1 cursor-pointer">
+      VIEW ANALYTICS →
+   </span>
+</Link>
                   </div>
                 </div>
               ))
