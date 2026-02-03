@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FadeIn, StaggerContainer, StaggerItem } from '@/components/Motion';
-// FIXED: Correct Portfolio import path
 import Portfolio from '@/components/Portfolio';
 import { supabase } from '@/lib/supabase';
 import { 
@@ -12,8 +11,7 @@ import {
   Zap, 
   LayoutGrid, 
   Cpu, 
-  Settings,
-  Wallet 
+  Settings 
 } from 'lucide-react';
 
 // --- TYPES ---
@@ -24,7 +22,7 @@ type Strategy = {
   win_rate?: number;
   return_pct?: number;
   trade_count?: number;
-  is_active?: boolean; // New field for the toggle
+  is_active?: boolean; 
 };
 
 type SignalRow = {
@@ -56,9 +54,9 @@ export default function DashboardPage() {
     if (!error) fetchStrategies();
   };
 
-  // --- NEW: TOGGLE STATUS FUNCTION ---
+  // --- TOGGLE STATUS FUNCTION ---
   const toggleStatus = async (id: number, currentStatus: boolean) => {
-    // 1. Optimistic UI update (Update screen instantly before DB responds)
+    // 1. Optimistic UI update
     setStrategies(strategies.map(s => 
       s.id === id ? { ...s, is_active: !currentStatus } : s
     ));
@@ -119,7 +117,6 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer">
               <LayoutGrid className="w-4 h-4" /> Dashboard
             </div>
-            {/* ... Dashboard link above ... */}
             
             <Link href="/settings">
               <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer">
@@ -127,7 +124,6 @@ export default function DashboardPage() {
               </div>
             </Link>
 
-            {/* ... Vertical line divider below ... */}
             <div className="h-4 w-px bg-white/10" />
             <div className="text-green-500 flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -145,158 +141,116 @@ export default function DashboardPage() {
           
           {/* Section Header */}
           <FadeIn>
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-1">Active Strategies</h2>
-              <p className="text-neutral-500 text-sm">Manage and monitor your algorithmic fleet</p>
-            </div>
-            <Link href="/?new=true">
-              <button className="group flex items-center gap-2 bg-white text-black px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-400 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_20px_rgba(34,197,94,0.4)]">
-                <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
-                New Strategy
-              </button>
-            </Link>
-          </div>
-    
-          {/* Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {loading ? (
-              <div className="text-neutral-500 animate-pulse">Loading fleet data...</div>
-            ) : strategies.length === 0 ? (
-              <div className="col-span-2 border border-dashed border-neutral-800 rounded-xl p-12 text-center text-neutral-500">
-                No active strategies. Launch your first bot.
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-1">Active Strategies</h2>
+                <p className="text-neutral-500 text-sm">Manage and monitor your algorithmic fleet</p>
               </div>
-            ) : (
-              // 👇 1. WRAP THE LIST IN THE CONTAINER
-              <StaggerContainer>
-                <div className="contents"> {/* 'contents' allows the grid layout to pass through */}
-                  {strategies.map((strategy) => (
-                    // 👇 2. WRAP EACH CARD IN AN ITEM
-                    <StaggerItem key={strategy.id}>
-                      <div className="group relative bg-neutral-900/50 backdrop-blur-sm border border-white/5 rounded-xl p-5 hover:border-green-500/50 hover:bg-neutral-900/80 transition-all duration-300 h-full">
-                        
-                        {/* ... (Your Card Content stays exactly the same) ... */}
-                        {/* Card Header */}
-                        <div className="flex justify-between items-start mb-4">
-                           {/* ... Copy the insides of your card here ... */}
-                           <div className="flex items-center gap-3">
+              <Link href="/?new=true">
+                <button className="group flex items-center gap-2 bg-white text-black px-4 py-2 rounded-lg font-bold text-sm hover:bg-green-400 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_20px_rgba(34,197,94,0.4)]">
+                  <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
+                  New Strategy
+                </button>
+              </Link>
+            </div>
+
+            {/* Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+              {loading ? (
+                <div className="text-neutral-500 animate-pulse">Loading fleet data...</div>
+              ) : strategies.length === 0 ? (
+                <div className="col-span-2 border border-dashed border-neutral-800 rounded-xl p-12 text-center text-neutral-500">
+                  No active strategies. Launch your first bot.
+                </div>
+              ) : (
+                <StaggerContainer>
+                  <div className="contents"> 
+                    {strategies.map((strategy) => (
+                      <StaggerItem key={strategy.id}>
+                        <div className="group relative bg-neutral-900/50 backdrop-blur-sm border border-white/5 rounded-xl p-5 hover:border-green-500/50 hover:bg-neutral-900/80 transition-all duration-300 h-full">
+                          
+                          {/* Card Header */}
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center border border-white/5 group-hover:border-green-500/30 transition-colors">
-                                 <Activity className="w-5 h-5 text-green-500" />
+                                <Activity className="w-5 h-5 text-green-500" />
                               </div>
                               <div>
-                                 <h3 className="font-bold text-white group-hover:text-green-400 transition-colors">{strategy.name}</h3>
-                                 <div className="flex items-center gap-2 mt-1">
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${strategy.is_active ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-neutral-800 text-neutral-500 border border-neutral-700'}`}>
-                                       {strategy.is_active ? 'ACTIVE' : 'PAUSED'}
-                                    </span>
-                                    <span className="text-[10px] text-neutral-600 font-mono">ID: {strategy.id}</span>
-                                 </div>
+                                <h3 className="font-bold text-white group-hover:text-green-400 transition-colors">{strategy.name}</h3>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${strategy.is_active ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-neutral-800 text-neutral-500 border border-neutral-700'}`}>
+                                    {strategy.is_active ? 'ACTIVE' : 'PAUSED'}
+                                  </span>
+                                  <span className="text-[10px] text-neutral-600 font-mono">ID: {strategy.id}</span>
+                                </div>
                               </div>
-                           </div>
-                        </div>
+                            </div>
+                          </div>
 
-                        {/* Performance Badges */}
-                        <div className="grid grid-cols-2 gap-2 mb-4">
-                           <div className="bg-neutral-950/50 rounded-lg p-3 border border-white/5">
+                          {/* Performance Badges */}
+                          <div className="grid grid-cols-2 gap-2 mb-4">
+                            <div className="bg-neutral-950/50 rounded-lg p-3 border border-white/5">
                               <div className="text-[10px] text-neutral-500 uppercase font-bold tracking-wider mb-1">Win Rate</div>
                               <div className={`text-xl font-mono font-bold ${(strategy.win_rate || 0) >= 50 ? 'text-green-400' : 'text-red-400'}`}>
-                                 {strategy.win_rate ? `${strategy.win_rate}%` : '--'}
+                                {strategy.win_rate ? `${strategy.win_rate}%` : '--'}
                               </div>
-                           </div>
-                           <div className="bg-neutral-950/50 rounded-lg p-3 border border-white/5">
+                            </div>
+                            <div className="bg-neutral-950/50 rounded-lg p-3 border border-white/5">
                               <div className="text-[10px] text-neutral-500 uppercase font-bold tracking-wider mb-1">Total Return</div>
                               <div className={`text-xl font-mono font-bold ${(strategy.return_pct || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                 {strategy.return_pct ? `${strategy.return_pct > 0 ? '+' : ''}${strategy.return_pct}%` : '--'}
+                                {strategy.return_pct ? `${strategy.return_pct > 0 ? '+' : ''}${strategy.return_pct}%` : '--'}
                               </div>
-                           </div>
-                        </div>
+                            </div>
+                          </div>
 
-                        {/* Footer */}
-                        <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                           <div className="text-xs text-neutral-500 font-mono">
+                          {/* Footer */}
+                          <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                            <div className="text-xs text-neutral-500 font-mono">
                               {strategy.trade_count || 0} Trades Executed
-                           </div>
-                           <Link href={`/strategy/${strategy.id}`}>
+                            </div>
+                            <Link href={`/strategy/${strategy.id}`}>
                               <span className="text-xs font-bold text-white hover:text-green-400 flex items-center gap-1 cursor-pointer">
-                                 VIEW ANALYTICS →
+                                VIEW ANALYTICS →
                               </span>
-                           </Link>
+                            </Link>
+                          </div>
+                          
+                          {/* Toggle & Delete Buttons (Bottom Right Absolute) */}
+                          <div className="absolute top-5 right-5 flex items-center gap-3">
+                             {/* Toggle Switch */}
+                             <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  toggleStatus(strategy.id, strategy.is_active || false);
+                                }}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${strategy.is_active ? 'bg-green-600' : 'bg-neutral-700'}`}
+                              >
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${strategy.is_active ? 'translate-x-6' : 'translate-x-1'}`} />
+                             </button>
+
+                             {/* Delete Button */}
+                             <button 
+                                onClick={(e) => { e.preventDefault(); deleteStrategy(strategy.id); }}
+                                className="text-neutral-600 hover:text-red-500 transition-colors p-1"
+                             >
+                                <Trash2 className="w-4 h-4" />
+                             </button>
+                          </div>
+
                         </div>
-                        
-                        {/* Toggle & Delete Buttons (Bottom Right Absolute) */}
-                         <div className="absolute top-5 right-5 flex items-center gap-3">
-                           {/* ... Toggle Button ... */}
-                           {/* ... Delete Button ... */}
-                         </div>
-
-                      </div>
-                    </StaggerItem>
-                  ))}
-                </div>
-              </StaggerContainer>
-            )}
-          </div>
-
-                    {/* TOGGLE SWITCH & DELETE */}
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          toggleStatus(strategy.id, strategy.is_active || false);
-                        }}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${strategy.is_active ? 'bg-green-600' : 'bg-neutral-700'}`}
-                      >
-                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${strategy.is_active ? 'translate-x-6' : 'translate-x-1'}`} />
-                      </button>
-
-                      <button 
-                        onClick={(e) => { e.preventDefault(); deleteStrategy(strategy.id); }}
-                        className="text-neutral-600 hover:text-red-500 transition-colors p-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                      </StaggerItem>
+                    ))}
                   </div>
+                </StaggerContainer>
+              )}
+            </div>
 
-                  {/* Performance Badges */}
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    <div className="bg-neutral-950/50 rounded-lg p-3 border border-white/5">
-                      <div className="text-[10px] text-neutral-500 uppercase font-bold tracking-wider mb-1">Win Rate</div>
-                      <div className={`text-xl font-mono font-bold ${
-                        (strategy.win_rate || 0) >= 50 ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {strategy.win_rate ? `${strategy.win_rate}%` : '--'}
-                      </div>
-                    </div>
-                    <div className="bg-neutral-950/50 rounded-lg p-3 border border-white/5">
-                      <div className="text-[10px] text-neutral-500 uppercase font-bold tracking-wider mb-1">Total Return</div>
-                      <div className={`text-xl font-mono font-bold ${
-                        (strategy.return_pct || 0) >= 0 ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {strategy.return_pct ? `${strategy.return_pct > 0 ? '+' : ''}${strategy.return_pct}%` : '--'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                    <div className="text-xs text-neutral-500 font-mono">
-                      {strategy.trade_count || 0} Trades Executed
-                    </div>
-                    <Link href={`/strategy/${strategy.id}`}>
-   <span className="text-xs font-bold text-white hover:text-green-400 flex items-center gap-1 cursor-pointer">
-      VIEW ANALYTICS →
-   </span>
-</Link>
-                  </div>
-                </div>
-              ))
-            )}
+            {/* Live Portfolio */}
             <div className="mt-8 pt-8 border-t border-white/5">
-             <h2 className="text-xl font-bold text-white mb-6">Live Portfolio</h2>
-             <Portfolio />
-          </div>
-          </div>
+               <h2 className="text-xl font-bold text-white mb-6">Live Portfolio</h2>
+               <Portfolio />
+            </div>
+          </FadeIn>
         </div>
 
         {/* RIGHT COLUMN: LIVE FEED (Span 4) */}
