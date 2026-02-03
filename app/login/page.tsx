@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createBrowserClient } from '@supabase/ssr'; // <--- NEW: Uses Cookies, not LocalStorage
 import { useRouter } from 'next/navigation';
 import { Cpu, Lock, ArrowRight, Mail } from 'lucide-react';
 
@@ -11,17 +11,23 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 1. AUTO-REDIRECT IF ALREADY LOGGED IN
+  // 1. INITIALIZE THE COOKIE-AWARE CLIENT
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  // 2. AUTO-REDIRECT IF ALREADY LOGGED IN
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // FORCE REDIRECT TO DASHBOARD (NOT CANVAS)
         router.push('/dashboard'); 
+        router.refresh();
       }
     };
     checkSession();
-  }, [router]);
+  }, [router, supabase]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,9 +43,9 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      // 2. FORCE REDIRECT ON SUCCESSFUL LOGIN
-      router.push('/dashboard');
+      // Refresh ensures the Middleware sees the new cookie immediately
       router.refresh();
+      router.push('/dashboard');
     }
   };
 
