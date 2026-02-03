@@ -11,6 +11,7 @@ import {
   Zap, 
   LayoutGrid, 
   Cpu, 
+  Users,
   Settings 
 } from 'lucide-react';
 
@@ -117,6 +118,12 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer">
               <LayoutGrid className="w-4 h-4" /> Dashboard
             </div>
+
+            <Link href="/community">
+  <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer">
+    <Users className="w-4 h-4" /> Community
+  </div>
+</Link>
             
             <Link href="/settings">
               <div className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer">
